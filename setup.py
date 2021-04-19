@@ -32,7 +32,6 @@ setup(
         "kepler.py",
         "numpy",
         "scipy",
-        "fitsio",
     ],
     extras_require={"test": "pytest"},
 )

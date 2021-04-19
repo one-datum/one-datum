@@ -12,41 +12,29 @@ import scipy.stats
 class RVErrorModel:
     def __init__(
         self,
-        max_num_transits: int,
+        num_transits: int,
         num_samples: int,
-        reuse: bool = False,
         seed: Optional[int] = None,
     ):
-        self.max_num_transits = max_num_transits
+        self.num_transits = num_transits
         self.num_samples = num_samples
 
         random = np.random.default_rng(seed)
         self.epsilon = random.standard_normal(num_samples)
         self.time_samples = self.sample_times(
-            random, num_samples, max_num_transits
+            random, num_samples, num_transits
         )
         self.parameter_samples, self.fiducial_model = self.sample_parameters(
             random, self.time_samples
         )
-
-        self.reuse = reuse
-        if reuse:
-            self.rate_parameter = np.empty((max_num_transits + 1, num_samples))
-            for n in range(max_num_transits + 1):
-                mod = self.fiducial_model[: n + 1]
-                self.rate_parameter[n] = np.sum(
-                    (mod - np.mean(mod, axis=0)[None, :]) ** 2, axis=0
-                )
-
-        else:
-            self.rate_parameter = np.sum(
-                (
-                    self.fiducial_model
-                    - np.mean(self.fiducial_model, axis=0)[None, :]
-                )
-                ** 2,
-                axis=0,
+        self.rate_parameter = np.sum(
+            (
+                self.fiducial_model
+                - np.mean(self.fiducial_model, axis=0)[None, :]
             )
+            ** 2,
+            axis=0,
+        )
 
     def sample_parameters(
         self, random: np.random.Generator, times: np.ndarray
@@ -57,7 +45,7 @@ class RVErrorModel:
         self,
         random: np.random.Generator,
         num_samples: int,
-        max_nb_transits: int,
+        num_transits: int,
     ) -> np.ndarray:
         raise NotImplementedError("Must be implemented by subclasses")
 
@@ -89,7 +77,6 @@ class RVErrorModel:
 
     def __call__(
         self,
-        num_transits: int,
         sample_variance: float,
         log_sigma: float,
         log_sigma_error: Optional[float] = None,
@@ -99,16 +86,9 @@ class RVErrorModel:
         else:
             sigma = np.exp(log_sigma + log_sigma_error * self.epsilon)
         ivar = 1.0 / sigma ** 2
-
-        if self.reuse:
-            assert num_transits <= self.max_num_transits
-            rate = self.rate_parameter[num_transits]
-        else:
-            assert num_transits == self.max_num_transits
-            rate = self.rate_parameter
-
-        ncx2 = scipy.stats.ncx2(df=num_transits, nc=rate)
-        return ncx2.logpdf((num_transits - 1) * sample_variance * ivar)
+        rate = self.rate_parameter
+        ncx2 = scipy.stats.ncx2(df=self.num_transits, nc=rate)
+        return ncx2.logpdf((self.num_transits - 1) * sample_variance * ivar)
 
 
 class DR2RVErrorModel(RVErrorModel):
@@ -116,28 +96,27 @@ class DR2RVErrorModel(RVErrorModel):
         self,
         random: np.random.Generator,
         num_samples: int,
-        max_nb_transits: int,
+        num_transits: int,
     ) -> np.ndarray:
-        return random.uniform(0, 668.0, (max_nb_transits, num_samples))
+        return random.uniform(0, 668.0, (num_transits, num_samples))
 
 
 class BasicDR2RVErrorModel(DR2RVErrorModel):
     def __init__(
         self,
-        max_num_transits: int,
+        num_transits: int,
         num_samples: int,
         log_period_range: Tuple[float, float] = (1.0, 800.0),
         log_semiamp_range: Tuple[float, float] = (0.1, 100.0),
         ecc_params: Optional[Tuple[float, float]] = None,
         ecc_uniform: bool = False,
-        reuse: bool = False,
         seed: Optional[int] = None,
     ):
         self.log_period_range = log_period_range
         self.log_semiamp_range = log_semiamp_range
         self.ecc_params = ecc_params
         self.ecc_uniform = ecc_uniform
-        super().__init__(max_num_transits, num_samples, reuse, seed)
+        super().__init__(num_transits, num_samples, seed)
 
     def sample_parameters(
         self, random: np.random.Generator, times: np.ndarray
