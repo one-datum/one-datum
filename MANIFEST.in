@@ -7,3 +7,4 @@ prune paper
 prune resources
 prune results
 prune workflow
+include src/one_datum/data/*.fits
