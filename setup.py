@@ -24,7 +24,7 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages("src"),
     package_dir={"": "src"},
-    package_data={"one_datum": "data/*.fits"},
+    package_data={"one_datum": ["data/*.fits"]},
     include_package_data=True,
     install_requires=[
         "astropy",
