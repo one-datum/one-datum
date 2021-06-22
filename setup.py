@@ -19,9 +19,7 @@ setup(
     author_email="foreman.mackey@gmail.com",
     url="https://github.com/dfm/one-datum",
     license="MIT",
-    description=(
-        "What can we infer about an orbit from the RV or astrometric jitter?"
-    ),
+    description=("What can we infer about an orbit from the RV jitter?"),
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
     packages=find_packages("src"),

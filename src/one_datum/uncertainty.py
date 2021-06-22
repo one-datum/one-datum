@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 
-__all__ = ["get_filename", "get_uncertainty_model"]
+__all__ = ["get_filename", "get_uncertainty_model", "estimate_uncertainty"]
 
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 import pkg_resources
 from astropy.io import fits
 from scipy.interpolate import RegularGridInterpolator
+
+try:
+    from numpy.typing import ArrayLike
+except ImportError:
+    ArrayLike = Any
 
 
 def get_filename() -> str:
@@ -18,7 +23,7 @@ def get_uncertainty_model(
     *,
     bounds_error: bool = False,
     fill_value: Optional[float] = None,
-    filename: str = None,
+    filename: Optional[str] = None,
 ) -> RegularGridInterpolator:
     """
     Get a callable interpolator to estimate the per-transit radial velocity
@@ -62,3 +67,24 @@ def get_uncertainty_model(
         bounds_error=bounds_error,
         fill_value=fill_value,
     )
+
+
+def estimate_uncertainty(
+    gmag: ArrayLike, bp_rp: ArrayLike, *, filename: Optional[str] = None
+) -> ArrayLike:
+    """
+    Estimate the per-transit radial velocity uncertainty of a Gaia EDR3 source
+    given its apparent G-magnitude and observed BP-RP color.
+
+    Args:
+        gmag (array): The apparent Gaia G-band magnitude of the source.
+        bp_rp (array): The observed BP-RP color of the source.
+        filename (str, optional): The path to the FITS file with the model. By
+            default, this will be the model bundled with the code.
+
+    Returns:
+        array: An estimate of Gaia's per-transit radial velocity uncertainty
+            for this source (or array of sources).
+    """
+    model = get_uncertainty_model(filename=filename)
+    return model(np.stack(np.broadcast_arrays(gmag, bp_rp), axis=-1))
